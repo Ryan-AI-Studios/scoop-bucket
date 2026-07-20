@@ -57,7 +57,7 @@ jobs:
             throw "ERROR: invalid architecture.64bit.hash: $hash"
           }
           if ($url -notlike "*/v${version}/*") {
-            throw "ERROR: url does not match version $version: $url"
+            throw "ERROR: url does not match version ${version}: $url"
           }
           if ($url -notlike '*.zip') {
             throw "ERROR: architecture.64bit.url must be a portable .zip (got: $url)"
