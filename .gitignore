@@ -1,0 +1,9 @@
+# Ledgerful local state (if doctor/scan is run in this repo)
+.ledgerful/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
