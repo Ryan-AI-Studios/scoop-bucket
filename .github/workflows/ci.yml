@@ -1,0 +1,181 @@
+# Lightweight Scoop-bucket CI for Ryan-AI-Studios/scoop-bucket.
+# Validates structure that release bump automation depends on and smokes
+# the Windows portable archive (ledgerful.exe at zip root).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manifest-guard:
+    name: Manifest structure + checksum pin + Windows smoke
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Require root ledgerful.json (not nested under bucket/)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path -LiteralPath 'ledgerful.json')) {
+            throw 'ERROR: root ledgerful.json is required'
+          }
+          if (Test-Path -LiteralPath 'bucket/ledgerful.json') {
+            throw 'ERROR: bucket/ledgerful.json must not exist; release bump pushes root ledgerful.json only'
+          }
+          if (Test-Path -LiteralPath 'bucket') {
+            throw 'ERROR: bucket/ directory is not used by this repo (root manifest only)'
+          }
+
+      - name: Parse version + 64bit url + hash from JSON
+        id: manifest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $m = Get-Content -LiteralPath 'ledgerful.json' -Raw | ConvertFrom-Json
+          $version = [string]$m.version
+          if ($version -notmatch '^\d+\.\d+\.\d+([.-].+)?$') {
+            throw "ERROR: could not parse version from ledgerful.json (got: $version)"
+          }
+          $url = [string]$m.architecture.'64bit'.url
+          $hash = [string]$m.architecture.'64bit'.hash
+          if (-not $url) { throw 'ERROR: architecture.64bit.url missing' }
+          if ($hash -notmatch '^[0-9a-f]{64}$') {
+            throw "ERROR: invalid architecture.64bit.hash: $hash"
+          }
+          if ($url -notlike "*/v${version}/*") {
+            throw "ERROR: url does not match version ${version}: $url"
+          }
+          if ($url -notlike '*.zip') {
+            throw "ERROR: architecture.64bit.url must be a portable .zip (got: $url)"
+          }
+          $asset = [System.IO.Path]::GetFileName($url)
+          if ($asset -ne 'ledgerful-x86_64-pc-windows-msvc.zip') {
+            throw "ERROR: unexpected Windows archive basename: $asset"
+          }
+          $bin = [string]$m.bin
+          if ($bin -ne 'ledgerful.exe') {
+            throw "ERROR: bin must be ledgerful.exe (got: $bin)"
+          }
+          if (-not $m.checkver -or -not $m.checkver.github) {
+            throw 'ERROR: checkver.github is required for Scoop updates'
+          }
+          $autoUrl = [string]$m.autoupdate.architecture.'64bit'.url
+          $autoHashUrl = [string]$m.autoupdate.architecture.'64bit'.hash.url
+          if (-not $autoUrl) {
+            throw 'ERROR: autoupdate.architecture.64bit.url is required'
+          }
+          if ($autoHashUrl -ne '$url.sha256') {
+            throw "ERROR: autoupdate hash url must be `$url.sha256 (got: $autoHashUrl)"
+          }
+          Write-Host "Parsed version: $version"
+          Write-Host "  url   $url"
+          Write-Host "  asset $asset"
+          Write-Host "  hash  $hash"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "url=$url" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "hash=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "asset=$asset" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Verify published checksum sidecar matches manifest hash
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+          WANT_HASH: ${{ steps.manifest.outputs.hash }}
+          ASSET: ${{ steps.manifest.outputs.asset }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = "v$env:VERSION"
+          $asset = $env:ASSET
+          $sidecar = "$asset.sha256"
+          $dir = Join-Path $env:RUNNER_TEMP 'sha'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Write-Host "Checking $sidecar against pin $env:WANT_HASH"
+          gh release download $tag `
+            --repo Ryan-AI-Studios/Ledgerful `
+            --pattern $sidecar `
+            --dir $dir `
+            --clobber
+          $sidecarPath = Join-Path $dir $sidecar
+          $got = ((Get-Content -LiteralPath $sidecarPath -TotalCount 1) -split '\s+')[0].Trim().ToLowerInvariant()
+          $want = $env:WANT_HASH.ToLowerInvariant()
+          if ($got -ne $want) {
+            throw "ERROR: manifest pin mismatch for $asset`n  manifest: $want`n  published: $got"
+          }
+          Write-Host "  match $asset"
+          Write-Host "Manifest sha256 pin matches published $tag checksum."
+
+      - name: Download zip, verify SHA256, extract root binary, smoke --version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+          WANT_HASH: ${{ steps.manifest.outputs.hash }}
+          ASSET: ${{ steps.manifest.outputs.asset }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = "v$env:VERSION"
+          $asset = $env:ASSET
+          $dir = Join-Path $env:RUNNER_TEMP 'archive'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          gh release download $tag `
+            --repo Ryan-AI-Studios/Ledgerful `
+            --pattern $asset `
+            --dir $dir `
+            --clobber
+          $zipPath = Join-Path $dir $asset
+          $got = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $want = $env:WANT_HASH.ToLowerInvariant()
+          if ($got -ne $want) {
+            throw "ERROR: downloaded archive hash mismatch`n  manifest: $want`n  file:     $got"
+          }
+          $extract = Join-Path $dir 'extract'
+          New-Item -ItemType Directory -Force -Path $extract | Out-Null
+          Expand-Archive -LiteralPath $zipPath -DestinationPath $extract -Force
+          $exe = Join-Path $extract 'ledgerful.exe'
+          if (-not (Test-Path -LiteralPath $exe)) {
+            Write-Host 'Extracted tree (maxdepth 3):'
+            Get-ChildItem -Path $extract -Recurse -Depth 2 | ForEach-Object { $_.FullName }
+            throw 'ERROR: ledgerful.exe not found at extract root (portable zip layout broken)'
+          }
+          $out = & $exe --version 2>&1 | Out-String
+          Write-Host "binary: $exe"
+          Write-Host "version: $out"
+          if ($out -notlike "*$($env:VERSION)*") {
+            throw "ERROR: --version output does not contain $($env:VERSION): $out"
+          }
+
+      - name: Require license files and README install docs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($f in @('LICENSE', 'COMMERCIAL-EXCEPTION.md', 'README.md')) {
+            if (-not (Test-Path -LiteralPath $f)) { throw "ERROR: missing $f" }
+          }
+          $readme = Get-Content -LiteralPath 'README.md' -Raw
+          if ($readme -notmatch 'scoop bucket add ledgerful') {
+            throw 'ERROR: README must document scoop bucket add install command'
+          }
+          if ($readme -notmatch 'scoop install ledgerful') {
+            throw 'ERROR: README must document scoop install ledgerful'
+          }
+          if ($readme -notmatch 'ledgerful\.json') {
+            throw 'ERROR: README must document root ledgerful.json layout'
+          }
+          if ($readme -notmatch 'Root path is intentional') {
+            throw 'ERROR: README must document intentional root ledgerful.json layout'
+          }
