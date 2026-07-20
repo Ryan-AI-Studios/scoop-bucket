@@ -59,16 +59,36 @@ jobs:
           if ($url -notlike "*/v${version}/*") {
             throw "ERROR: url does not match version $version: $url"
           }
+          if ($url -notlike '*.zip') {
+            throw "ERROR: architecture.64bit.url must be a portable .zip (got: $url)"
+          }
+          $asset = [System.IO.Path]::GetFileName($url)
+          if ($asset -ne 'ledgerful-x86_64-pc-windows-msvc.zip') {
+            throw "ERROR: unexpected Windows archive basename: $asset"
+          }
           $bin = [string]$m.bin
           if ($bin -ne 'ledgerful.exe') {
             throw "ERROR: bin must be ledgerful.exe (got: $bin)"
           }
+          if (-not $m.checkver -or -not $m.checkver.github) {
+            throw 'ERROR: checkver.github is required for Scoop updates'
+          }
+          $autoUrl = [string]$m.autoupdate.architecture.'64bit'.url
+          $autoHashUrl = [string]$m.autoupdate.architecture.'64bit'.hash.url
+          if (-not $autoUrl) {
+            throw 'ERROR: autoupdate.architecture.64bit.url is required'
+          }
+          if ($autoHashUrl -ne '$url.sha256') {
+            throw "ERROR: autoupdate hash url must be `$url.sha256 (got: $autoHashUrl)"
+          }
           Write-Host "Parsed version: $version"
-          Write-Host "  url  $url"
-          Write-Host "  hash $hash"
+          Write-Host "  url   $url"
+          Write-Host "  asset $asset"
+          Write-Host "  hash  $hash"
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "url=$url" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "hash=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "asset=$asset" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Verify published checksum sidecar matches manifest hash
         shell: pwsh
@@ -76,10 +96,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.manifest.outputs.version }}
           WANT_HASH: ${{ steps.manifest.outputs.hash }}
+          ASSET: ${{ steps.manifest.outputs.asset }}
         run: |
           $ErrorActionPreference = 'Stop'
           $tag = "v$env:VERSION"
-          $asset = 'ledgerful-x86_64-pc-windows-msvc.zip'
+          $asset = $env:ASSET
           $sidecar = "$asset.sha256"
           $dir = Join-Path $env:RUNNER_TEMP 'sha'
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
@@ -104,10 +125,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.manifest.outputs.version }}
           WANT_HASH: ${{ steps.manifest.outputs.hash }}
+          ASSET: ${{ steps.manifest.outputs.asset }}
         run: |
           $ErrorActionPreference = 'Stop'
           $tag = "v$env:VERSION"
-          $asset = 'ledgerful-x86_64-pc-windows-msvc.zip'
+          $asset = $env:ASSET
           $dir = Join-Path $env:RUNNER_TEMP 'archive'
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
           gh release download $tag `
@@ -154,9 +176,6 @@ jobs:
           if ($readme -notmatch 'ledgerful\.json') {
             throw 'ERROR: README must document root ledgerful.json layout'
           }
-          if ($readme -notmatch 'repo root' -and $readme -notmatch 'NOT bucket/') {
-            # Layout section should call out root path intentionality
-            if ($readme -notmatch 'Root path is intentional') {
-              throw 'ERROR: README must document intentional root ledgerful.json layout'
-            }
+          if ($readme -notmatch 'Root path is intentional') {
+            throw 'ERROR: README must document intentional root ledgerful.json layout'
           }
