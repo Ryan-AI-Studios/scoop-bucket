@@ -9,7 +9,7 @@
   "architecture": {
     "64bit": {
       "url": "https://github.com/Ryan-AI-Studios/Ledgerful/releases/download/v0.2.3/ledgerful-x86_64-pc-windows-msvc.zip",
-      "hash": "055abdfd2d85859c015f842b3de9094554cf590eca46292d0d41d577ff8c6741"
+      "hash": "8f3aca4e947a640747e82c722e433e4fef2e3ebca7084a12a5a158334b289529"
     }
   },
   "bin": "ledgerful.exe",
