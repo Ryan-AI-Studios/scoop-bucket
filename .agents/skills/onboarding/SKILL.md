@@ -69,7 +69,7 @@ Remote URLs:
 | Homebrew | https://github.com/Ryan-AI-Studios/homebrew-tap | `brew install Ryan-AI-Studios/tap/ledgerful` |
 | winget | `microsoft/winget-pkgs` (external) | `winget install Ledgerful.Ledgerful` **only after** package is accepted |
 
-Other install channels (not owned by these repos): one-line `install/install.{ps1,sh}`, `cargo binstall --git https://github.com/Ryan-AI-Studios/Ledgerful`, `@ledgerful/mcp-server` (npm; engine pin `ledgerfulEngineTag`; publish from engine `npm-publish` job after release assets exist).
+Other install channels (not owned by these repos): one-line `install/install.{ps1,sh}`, `cargo binstall --git https://github.com/Ryan-AI-Studios/Ledgerful`, `@ledgerful/mcp-server` (npm; engine pin `ledgerfulEngineTag`; Gate B asserts published pin; `npm-publish` after release assets — **wired/gated, not yet exercised** as of 2026-07-29: latest was hand-published, `dist.attestations` absent; next tag is the proof).
 
 ---
 
