@@ -7,7 +7,7 @@ description: Use for Scoop bucket, Homebrew tap, winget bootstrap, or engine pac
 
 ## Mission
 
-Ship and maintain **one-command installs** (`scoop` / `brew` / `winget` / `cargo binstall`) that download **checksum-pinned** release binaries. Metadata only — binaries are built by engine release CI.
+Ship and maintain **one-command installs** (`scoop` / `brew` / `winget` / `cargo binstall` / npm `@ledgerful/mcp-server`) that download **checksum-pinned** release binaries. Metadata only — binaries are built by engine release CI. npm is **engine-owned** (not these scoop/homebrew repos); listed so distribution agents know the surface exists.
 
 ## Load order
 
@@ -23,7 +23,7 @@ Ship and maintain **one-command installs** (`scoop` / `brew` / `winget` / `cargo
 | Release binaries + `*.sha256` | Engine release pipeline |
 | Formula/manifest **templates** | Engine `packaging/` |
 | Live formula/manifest in GitHub | homebrew-tap / scoop-bucket |
-| Version+hash rewrite on tag | Engine `bump-manifests` → optional push with `MANIFEST_PUSH_TOKEN` |
+| Version+hash rewrite on tag | Engine `bump-manifests` → required push via `MANIFEST_PUSH_TOKEN` (`require-secret.sh` + `verify-manifests`) |
 | First winget package | Track `winget-bootstrap/` then owner PR to winget-pkgs |
 | Subsequent winget bumps | Engine `winget-releaser` + `WINGET_TOKEN` (after first package) |
 | `/install` web copy | `ledgerful-web` (truth-check; only show live channels) |
