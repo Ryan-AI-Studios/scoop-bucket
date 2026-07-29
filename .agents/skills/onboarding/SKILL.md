@@ -69,7 +69,7 @@ Remote URLs:
 | Homebrew | https://github.com/Ryan-AI-Studios/homebrew-tap | `brew install Ryan-AI-Studios/tap/ledgerful` |
 | winget | `microsoft/winget-pkgs` (external) | `winget install Ledgerful.Ledgerful` **only after** package is accepted |
 
-Other install channels (not owned by these repos): one-line `install/install.{ps1,sh}`, `cargo binstall --git https://github.com/Ryan-AI-Studios/Ledgerful`.
+Other install channels (not owned by these repos): one-line `install/install.{ps1,sh}`, `cargo binstall --git https://github.com/Ryan-AI-Studios/Ledgerful`, `@ledgerful/mcp-server` (npm; engine pin `ledgerfulEngineTag`; publish from engine `npm-publish` job after release assets exist).
 
 ---
 
@@ -102,7 +102,7 @@ As of scoop-bucket seed completion (2026-07-20), typical status is:
 6. **Truth gate** — install commands on READMEs / web must be real. Do not advertise winget install until the package is accepted. PolyForm NC is not MIT.
 7. **Git hygiene** — feature branch → PR → CI green → squash-merge. Never force-push `main`. No secrets in git.
 8. **Secrets**
-   - `MANIFEST_PUSH_TOKEN` — engine can push bumps to tap/bucket when set (ops).
+   - `MANIFEST_PUSH_TOKEN` — required for a green release after 0098: `scripts/require-secret.sh` hard-fails when empty; `verify-manifests` asserts live tap/bucket pins moved. (Still the secret that authenticates the push.)
    - `WINGET_TOKEN` — **leave unset** until `Ledgerful.Ledgerful` exists in winget-pkgs.
 
 ---
@@ -200,7 +200,7 @@ ledgerful --version
 | CI PowerShell parse error near `$version:` | Use `${version}:` in throw strings |
 | Scoop install wants 7-Zip | Manifest pointed at `.tar.gz` instead of `.zip` |
 | Binary not found after extract | Expected root `ledgerful.exe` but archive nested (or reverse for brew) |
-| Engine bump “works” but tap empty | `MANIFEST_PUSH_TOKEN` unset — validation still runs; push skipped |
+| Empty `MANIFEST_PUSH_TOKEN` / unmoved live pin | Empty secret fails `bump-manifests` hard (`require-secret.sh`); unmoved live pin after publish fails `verify-manifests` |
 | winget-release job fails every tag | `WINGET_TOKEN` set before first package exists |
 | Install page lies | Advertised channel before live; fails truth-check discipline |
 

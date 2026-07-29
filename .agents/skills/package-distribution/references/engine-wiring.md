@@ -36,16 +36,19 @@ https://github.com/Ryan-AI-Studios/Ledgerful/releases/download/v{VERSION}/{asset
 
 ## Bump job behavior
 
-On each engine tag release, after publish:
+On each engine tag release, after publish (post-0098 — push is **not** optional):
 
 1. Download published `*.sha256` for the tag  
-2. Run `bump-manifests` (always — validates)  
-3. If `MANIFEST_PUSH_TOKEN` set → clone + commit + push:
+2. Run `bump-manifests`  
+3. `scripts/require-secret.sh MANIFEST_PUSH_TOKEN` — **hard-fails** if empty  
+4. Clone + commit + push:
    - `Ryan-AI-Studios/homebrew-tap` → **`ledgerful.rb`**
    - `Ryan-AI-Studios/scoop-bucket` → **`ledgerful.json`**
-4. If secret empty → skip push (validation still must pass)
+5. `verify-manifests` reads live pins via `gh api` and **fails** if they did not move
 
 **Invariant:** hashes read **only** from sidecars. Never recompute from zip/tar in the bump script.
+
+Release path also has **Gate A** (preflight on tag push) and **Gate B** (scheduled drift check, including npm pin). See [docs/package-distribution.md](https://github.com/Ryan-AI-Studios/Ledgerful/blob/main/docs/package-distribution.md) — do not re-author that runbook here.
 
 ### Local fixture test
 
@@ -64,7 +67,7 @@ pwsh -File C:\dev\ledgerful\scripts\bump-manifests.ps1 `
 
 | Secret | Repo | Purpose | Caution |
 |---|---|---|---|
-| `MANIFEST_PUSH_TOKEN` | engine | Push bumped formula/manifest to tap + bucket | Ops configure after seeds exist |
+| `MANIFEST_PUSH_TOKEN` | engine | Push bumped formula/manifest to tap + bucket | **Required** for green release (not optional). **Minimal required scope:** `contents: write` on `homebrew-tap` **and** `scoop-bucket` only (nothing else). Live token may currently be wider; narrowing is an open owner action in `deferred.md` (0102 docs half only — do not change credentials from this track). |
 | `WINGET_TOKEN` | engine | winget-releaser PRs | **Unset until** `Ledgerful.Ledgerful` accepted |
 | `GITHUB_TOKEN` | default Actions | Download public release assets | Least privilege |
 
