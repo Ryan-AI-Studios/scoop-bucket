@@ -1,5 +1,5 @@
 {
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Local-first change intelligence CLI for impact analysis and verification",
   "homepage": "https://github.com/Ryan-AI-Studios/Ledgerful",
   "license": {
@@ -8,8 +8,8 @@
   },
   "architecture": {
     "64bit": {
-      "url": "https://github.com/Ryan-AI-Studios/Ledgerful/releases/download/v0.2.5/ledgerful-x86_64-pc-windows-msvc.zip",
-      "hash": "4f46c8a7a90b3909f2d2afd15ed93f55c824016b222b57a32061295cc0a0e5f2"
+      "url": "https://github.com/Ryan-AI-Studios/Ledgerful/releases/download/v0.2.6/ledgerful-x86_64-pc-windows-msvc.zip",
+      "hash": "631a7f0d5dd99bc4b2a11b0e4eb6a80276e5faec7c8e118a13862d08a6788978"
     }
   },
   "bin": "ledgerful.exe",
