@@ -176,7 +176,10 @@ ledgerful --version
 
 - Formula: root `ledgerful.rb` (CLI **formula**, not cask)
 - Artifacts: three `tar.gz` (aarch64-darwin, x86_64-darwin, x86_64-linux)
-- Install nests binary via `Dir["ledgerful-*/ledgerful"]`
+- Install resolves binary via buildpath-anchored dual glob:
+  `Pathname.glob(buildpath/"ledgerful")` first (brew stages tar top-level
+  `ledgerful-{target}/` as buildpath), nested
+  `Pathname.glob(buildpath/"ledgerful-*/ledgerful")` fallback
 - `license :cannot_represent` is intentional (PolyForm NC + exception)
 - Quarantine interim until notarization: `xattr -d com.apple.quarantine "$(which ledgerful)"`
 - Smoke (macOS/Linuxbrew): `brew install Ryan-AI-Studios/tap/ledgerful && ledgerful --version`

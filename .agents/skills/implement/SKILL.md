@@ -46,7 +46,7 @@ do_not:
 | Surface | Checks |
 |---|---|
 | scoop-bucket | JSON valid; pin vs `gh release download` sidecar; local `scoop install` if possible |
-| homebrew-tap | Formula parses; pins vs sidecars; nested install path; brew install if host allows |
+| homebrew-tap | Formula parses; pins vs sidecars; buildpath dual-glob install (`Pathname.glob`); brew install if host allows |
 | winget-bootstrap | `python validate_manifests.py`; optional winget validate |
 | engine packaging | `bump-manifests` fixture test; integration filter if present; normal engine gates if Rust/CI touched |
 

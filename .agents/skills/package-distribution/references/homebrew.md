@@ -29,7 +29,11 @@ ledgerful --version
   - `ledgerful-aarch64-apple-darwin.tar.gz`
   - `ledgerful-x86_64-apple-darwin.tar.gz`
   - `ledgerful-x86_64-unknown-linux-gnu.tar.gz`
-- `install` uses nested path: `Dir["ledgerful-*/ledgerful"]` → `bin.install … => "ledgerful"`
+- `install` resolves the binary with buildpath-anchored dual glob:
+  `Pathname.glob(buildpath/"ledgerful")` first (Homebrew stages the tar’s
+  top-level `ledgerful-{target}/` as `buildpath`, so the binary is usually a
+  direct child), then nested fallback
+  `Pathname.glob(buildpath/"ledgerful-*/ledgerful")` → `bin.install … => "ledgerful"`
 - `license :cannot_represent` — Homebrew cannot encode PolyForm NC + commercial exception as one SPDX id; product license is still PolyForm NC + exception files in the repo
 - `caveats` document Gatekeeper interim if unsigned/un-notarized:
 
@@ -59,10 +63,12 @@ Should:
 2. Parse version + ≥3 sha256 pins  
 3. Ensure urls contain `/v{version}/`  
 4. Download each published `*.sha256` for the formula urls; match pins  
-5. Preferably: download Linux tarball, verify archive hash, extract nested binary, run `--version`  
-6. Require LICENSE, COMMERCIAL-EXCEPTION.md, README; quarantine guidance present  
+5. Linux tarball: verify archive hash; prove **archive** nesting (`ledgerful-*/ledgerful`); model brew **staging** (exactly one top-level `ledgerful-*` dir = buildpath); dual-glob Ruby resolve against that stage; run staged `--version`  
+6. Formula source must contain `Pathname.glob(buildpath` and must **not** use `Dir["ledgerful-`  
+7. Prefer real `brew install --formula ./ledgerful.rb` smoke (Linuxbrew job) when CI infra allows  
+8. Require LICENSE, COMMERCIAL-EXCEPTION.md, README; quarantine guidance present  
 
-Full `brew install` matrix (Apple Silicon / Intel / Linuxbrew) may be an **external residual** when the orchestrator host is Windows-only — record in `deferred.md` if not run; do not fake it.
+Apple Silicon / Gatekeeper end-user install may remain a manual residual — record in `deferred.md` if not run; do not fake it.
 
 ## Local verification
 
